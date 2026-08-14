@@ -1,0 +1,24 @@
+# policy.yaml — the single source of truth for what the agent may do.
+#
+# Deny-by-default: if something is not listed here, it is refused.
+# Adding a new tool means adding a block under `tools:` — no Python changes.
+
+tools:
+  kubectl_get:
+    # This tool takes the resource kind as an argument, so read it from there.
+    resource_arg: resource_type
+  kubectl_logs:
+    # These two always operate on pods, so the resource is fixed.
+    resource: pods
+  kubectl_describe:
+    resource: pods
+
+allowed_namespaces:
+  - dev
+  - demo
+
+allowed_resources:
+  - pods
+  - deployments
+  - services
+  # NOTE: `secrets` is deliberately absent.
