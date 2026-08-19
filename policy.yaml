@@ -1,17 +1,31 @@
 # policy.yaml — the single source of truth for what the agent may do.
 #
 # Deny-by-default: if something is not listed here, it is refused.
-# Adding a new tool means adding a block under `tools:` — no Python changes.
+#
+# Each tool declares its own `checks` — the dimensions the gate should
+# validate for THAT tool. A dimension is either pulled from an argument
+# (`from_arg`) or fixed regardless of what the caller passes (`fixed`).
+# A tool with no dimensions (aws_get_iam_policy) is still gated — it just
+# has nothing beyond "is this tool in the allowlist at all" to check.
 
 tools:
   kubectl_get:
-    # This tool takes the resource kind as an argument, so read it from there.
-    resource_arg: resource_type
+    checks:
+      namespace: {from_arg: namespace}
+      resource: {from_arg: resource_type}
   kubectl_logs:
-    # These two always operate on pods, so the resource is fixed.
-    resource: pods
+    checks:
+      namespace: {from_arg: namespace}
+      resource: {fixed: pods}
   kubectl_describe:
-    resource: pods
+    checks:
+      namespace: {from_arg: namespace}
+      resource: {fixed: pods}
+  aws_describe_instances:
+    checks:
+      region: {from_arg: region}
+  aws_get_iam_policy:
+    checks: {}
 
 allowed_namespaces:
   - dev
@@ -19,6 +33,7 @@ allowed_namespaces:
 
 allowed_resources:
   - pods
-  - deployments
-  - services
   # NOTE: `secrets` is deliberately absent.
+
+allowed_regions:
+  - ca-central-1

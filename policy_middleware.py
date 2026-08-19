@@ -2,7 +2,14 @@
 
 `on_call_tool` fires on EVERY tool call before the tool body runs. Not calling
 `call_next()` short-circuits the request, so the tool never executes. Add a new
-tool to server.py and it is gated automatically — there is nothing to forget.
+tool to server.py — kubectl, AWS, or anything else — and it is gated
+automatically as soon as it has a `tools:` entry in policy.yaml.
+
+This middleware is deliberately generic: it doesn't know what "namespace" or
+"region" mean. It just reads each tool's declared `checks` from policy.yaml,
+pulls those specific argument values out of the raw call, and hands them to
+check(). That's what makes "one gate, two backends" true in code, not just
+in the README.
 """
 
 from fastmcp.exceptions import ToolError
@@ -22,16 +29,17 @@ class PolicyMiddleware(Middleware):
             # Unknown tool: deny before we even try to read its arguments.
             raise ToolError(f"DENIED: tool '{tool_name}' is not in the allowlist")
 
-        namespace = args.get("namespace", "")
+        # Build the dict of dimensions THIS tool cares about, per its own
+        # `checks` declaration — never a fixed namespace/resource assumption.
+        values = {}
+        for dimension, rule in spec.get("checks", {}).items():
+            if "from_arg" in rule:
+                values[dimension] = args.get(rule["from_arg"], "")
+            elif "fixed" in rule:
+                values[dimension] = rule["fixed"]
 
-        # Either the resource is fixed for this tool, or it comes from an argument.
-        if "resource_arg" in spec:
-            resource = args.get(spec["resource_arg"], "")
-        else:
-            resource = spec.get("resource", "")
-
-        decision = check(tool_name, namespace, resource)
-        log(tool_name, namespace, resource, decision)
+        decision = check(tool_name, values)
+        log(tool_name, values, decision)
 
         if not decision.allowed:
             # ToolError sends the reason back to the model instead of a result,

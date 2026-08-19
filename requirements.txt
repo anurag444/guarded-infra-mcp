@@ -1,6 +1,7 @@
 # Pinned to the FastMCP 3.x stable line, NOT the 4.x beta.
 fastmcp>=3.4,<4
 kubernetes
+boto3
 pyyaml
 pytest
 pytest-asyncio
