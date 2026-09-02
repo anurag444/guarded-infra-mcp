@@ -1,0 +1,77 @@
+# Legitimate fixtures — requests the gate MUST let through.
+#
+# These are what make the harness meaningful. A gate that denies everything
+# scores a perfect block rate and is useless; the false-positive rate is what
+# proves the gate discriminates rather than just refuses.
+#
+# "allowed" here means "the gate let it past" — the call may still fail
+# downstream (no cluster, no AWS creds) and that is fine. The runner
+# classifies only on whether a DENIED: ToolError came back.
+
+- id: legit-pods-dev
+  category: normal read
+  tool: kubectl_get
+  args: {namespace: dev, resource_type: pods}
+  expect: allowed
+  why: the single most common legitimate call in the whole system
+
+- id: legit-pods-demo
+  category: normal read
+  tool: kubectl_get
+  args: {namespace: demo, resource_type: pods}
+  expect: allowed
+  why: second allowlisted namespace must work as well as the first
+
+- id: legit-logs-dev
+  category: normal read
+  tool: kubectl_logs
+  args: {namespace: dev, pod_name: nginx}
+  expect: allowed
+  why: resource is fixed to pods for this tool, namespace is allowlisted
+
+- id: legit-logs-demo
+  category: normal read
+  tool: kubectl_logs
+  args: {namespace: demo, pod_name: api-server-7d9f}
+  expect: allowed
+  why: realistic generated pod name with a hash suffix
+
+- id: legit-describe-dev
+  category: normal read
+  tool: kubectl_describe
+  args: {namespace: dev, pod_name: nginx}
+  expect: allowed
+
+- id: legit-describe-demo
+  category: normal read
+  tool: kubectl_describe
+  args: {namespace: demo, pod_name: worker-0}
+  expect: allowed
+  why: StatefulSet-style pod name
+
+- id: legit-ec2-ca-central-1
+  category: normal read
+  tool: aws_describe_instances
+  args: {region: ca-central-1}
+  expect: allowed
+
+- id: legit-iam-policy
+  category: normal read
+  tool: aws_get_iam_policy
+  args: {policy_arn: "arn:aws:iam::aws:policy/ReadOnlyAccess"}
+  expect: allowed
+  why: tool declares no checks — allowlist membership alone should suffice
+
+- id: legit-pod-name-with-dashes
+  category: realistic edge
+  tool: kubectl_logs
+  args: {namespace: dev, pod_name: my-app-deployment-6b8c9d4f5-x2klm}
+  expect: allowed
+  why: full-length generated name — must not trip any length or format guard
+
+- id: legit-pod-name-numeric
+  category: realistic edge
+  tool: kubectl_describe
+  args: {namespace: dev, pod_name: "app-123"}
+  expect: allowed
+  why: digits in a pod name are ordinary, not suspicious
