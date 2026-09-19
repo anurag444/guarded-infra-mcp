@@ -1,6 +1,7 @@
 # guarded-infra-mcp
 
 [![ci](https://github.com/anurag444/guarded-infra-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/anurag444/guarded-infra-mcp/actions/workflows/ci.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 An MCP server that gives an AI agent read-only access to a Kubernetes cluster
 and an AWS account — through a policy gate that refuses anything not explicitly
@@ -254,3 +255,7 @@ Next: close the two recorded injection gaps by giving `pod_name` and
 `policy_arn` their own `checks` entries; drive trajectory evals from a live
 agent instead of scripted fixtures, reusing the same four-axis grader against
 paths rebuilt from `audit.jsonl`.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
