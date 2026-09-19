@@ -15,11 +15,23 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(mes
 logger = logging.getLogger("guarded-infra-mcp")
 
 REQUEST_TIMEOUT_SECONDS = 10
-session = boto3.Session(profile_name="guarded-ro")
+AWS_PROFILE = "guarded-ro"
 
 
 class ResourceType(str, Enum):
     PODS = "pods"
+
+
+@lru_cache(maxsize=1)
+def aws_session() -> boto3.Session:
+    """Resolved on first AWS call, not at import.
+
+    A module-level Session(profile_name=...) raises ProfileNotFound the moment
+    anyone without that exact profile imports server.py — which is every fresh
+    clone, and CI. The gate and both eval suites are supposed to run with no
+    credentials at all, so credential resolution has to be lazy to match.
+    """
+    return boto3.Session(profile_name=AWS_PROFILE)
 
 
 @lru_cache(maxsize=1)
@@ -125,14 +137,14 @@ async def kubectl_describe(namespace: str, pod_name: str) -> dict:
 @mcp.tool()
 async def aws_describe_instances(region: str) -> dict:
     """Read-only: list EC2 instances in a region."""
-    ec2 = session.client("ec2", region_name=region)
+    ec2 = aws_session().client("ec2", region_name=region)
     result = await asyncio.to_thread(ec2.describe_instances)
     return {"reservations": len(result.get("Reservations", []))}
 
 @mcp.tool()
 async def aws_get_iam_policy(policy_arn: str) -> dict:
     """Read-only: fetch metadata for an IAM policy."""
-    iam = session.client("iam")
+    iam = aws_session().client("iam")
     result = await asyncio.to_thread(iam.get_policy, PolicyArn=policy_arn)
     return {"policy": result["Policy"]["PolicyName"]}
 

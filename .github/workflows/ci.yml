@@ -1,0 +1,35 @@
+# Gate + eval suites on every push. No cluster, no AWS credentials.
+#
+# That constraint is the point: both eval suites classify "allowed" as "the
+# gate let it through", not "the backend answered", so the policy layer is
+# fully testable in CI with nothing provisioned. test_server.py is the one
+# file that genuinely needs a live cluster, so it is deselected here and run
+# locally against k3d.
+name: ci
+
+on:
+  push:
+    branches: [main, feature]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: tests (policy, gate, audit, evals)
+        run: pytest -q --ignore=test_server.py
+
+      - name: eval suites
+        # Printed to the job log as well as asserted in pytest: block rate,
+        # false-positive rate, path accuracy, grader discrimination.
+        run: python run_evals.py

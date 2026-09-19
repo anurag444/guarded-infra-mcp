@@ -1,8 +1,15 @@
 # guarded-infra-mcp
 
+[![ci](https://github.com/anurag444/guarded-infra-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/anurag444/guarded-infra-mcp/actions/workflows/ci.yml)
+
 An MCP server that gives an AI agent read-only access to a Kubernetes cluster
 and an AWS account — through a policy gate that refuses anything not explicitly
 allowed, audits every decision, and is scored by two eval suites.
+
+Runs entirely on your machine against your own cluster and your own AWS
+profile. No credentials leave it, and nothing is sent anywhere.
+
+![demo](docs/demo.gif)
 
 ## What this is
 
@@ -173,7 +180,7 @@ makes the file readable as trajectories rather than a flat list:
 ./audit_queries.sh trace    # kubectl_get[allow] -> kubectl_describe[allow] -> kubectl_get[deny] -> …
 ```
 
-`audit_queries.sh` holds 8 jq queries — deny rate, deny categories, per-tool
+`audit_queries.sh` holds eight jq queries — deny rate, deny categories, per-tool
 usage, denials, traces, repeat offenders, latency p50/p95/max, backend errors.
 jq because JSONL needs no daemon to be queryable; the same field names map
 onto Splunk, Loki, or DuckDB's `read_json_auto` if this ever needs a hosted
@@ -207,18 +214,27 @@ changes, in either direction.
 ## Setup
 
 ```bash
+git clone https://github.com/anurag444/guarded-infra-mcp && cd guarded-infra-mcp
 python3.11 -m venv .venv && .venv/bin/pip install -r requirements.txt
 
+.venv/bin/python -m pytest --ignore=test_server.py   # 45 tests, no setup at all
+.venv/bin/python run_evals.py                        # both eval suites
+.venv/bin/python demo.py                             # four gated calls
+```
+
+Those three need no cluster, no AWS account, and no credentials — both eval
+suites classify "allowed" as "the gate let it through", so the policy layer is
+fully exercised with nothing provisioned. That is also exactly what CI runs.
+
+To point it at real infrastructure:
+
+```bash
 k3d cluster create guarded            # local Kubernetes
 aws configure --profile guarded-ro    # read-only AWS profile
 
 .venv/bin/python server.py            # run the server
-.venv/bin/python -m pytest            # 51 tests
-.venv/bin/python run_evals.py         # both eval suites
+.venv/bin/python -m pytest            # all 51 tests, including live-cluster ones
 ```
-
-The eval suites and every test except `test_server.py` run with no cluster and
-no AWS credentials.
 
 Register with an MCP host (`.vscode/mcp.json` is already checked in):
 
@@ -229,7 +245,10 @@ Register with an MCP host (`.vscode/mcp.json` is already checked in):
 ## Status
 
 Working: five read-only tools across two backends, one policy gate, JSONL audit
-trail with jq queries, 51 tests, and both eval suites at 100% / 0%.
+trail with jq queries, 51 tests (45 of them with no setup), CI on every push,
+and both eval suites at 100% / 0%.
+
+Regenerate the demo above with `docs/record.sh` (needs `asciinema` and `agg`).
 
 Next: close the two recorded injection gaps by giving `pod_name` and
 `policy_arn` their own `checks` entries; drive trajectory evals from a live

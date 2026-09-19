@@ -15,7 +15,7 @@ fires, and denials come back as ToolError.
 These tests need NO cluster and NO real AWS account: a denied call is refused
 before it ever reaches Kubernetes or AWS, so nothing here talks to k3d or a
 real AWS profile — server.py's session/client init must stay lazy for that
-to hold (see the lru_cache note on load_k8s_client / get_aws_session).
+to hold (see the lru_cache note on load_k8s_client / aws_session).
 
 Run with:  pytest test_gate.py -v
 """
@@ -23,6 +23,24 @@ Run with:  pytest test_gate.py -v
 import pytest
 from fastmcp import Client
 from fastmcp.exceptions import ToolError
+
+
+async def passed_the_gate(client: Client, tool: str, args: dict) -> bool:
+    """Did the middleware let this call through?
+
+    Deliberately indifferent to what happened afterwards. Without AWS
+    credentials the tool body raises, and that is a backend outcome, not a
+    policy one — the only thing these tests are entitled to assert is that no
+    DENIED came back. Asserting on the payload instead would quietly make the
+    suite require a real AWS account.
+    """
+    try:
+        await client.call_tool(tool, args)
+        return True
+    except ToolError as e:
+        return not str(e).startswith("DENIED:")
+    except Exception:
+        return True
 
 from server import mcp
 
@@ -89,8 +107,9 @@ async def test_disallowed_region_is_denied():
 @pytest.mark.asyncio
 async def test_allowed_region_is_permitted():
     async with Client(mcp) as c:
-        result = await c.call_tool("aws_describe_instances", {"region": "ca-central-1"})
-    assert "reservations" in result.data
+        assert await passed_the_gate(
+            c, "aws_describe_instances", {"region": "ca-central-1"}
+        )
 
 
 @pytest.mark.asyncio
@@ -107,10 +126,10 @@ async def test_iam_policy_tool_has_no_dimensions_to_check():
     """aws_get_iam_policy declares no `checks` in policy.yaml — it should
     still succeed, since being in the tools: allowlist is itself sufficient."""
     async with Client(mcp) as c:
-        result = await c.call_tool(
-            "aws_get_iam_policy", {"policy_arn": "arn:aws:iam::aws:policy/ReadOnlyAccess"}
+        assert await passed_the_gate(
+            c, "aws_get_iam_policy",
+            {"policy_arn": "arn:aws:iam::aws:policy/ReadOnlyAccess"},
         )
-    assert "policy" in result.data
 
 
 @pytest.mark.asyncio
