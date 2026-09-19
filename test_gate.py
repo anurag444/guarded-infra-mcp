@@ -142,12 +142,12 @@ async def test_only_expected_tools_are_exposed():
 @pytest.mark.asyncio
 async def test_audit_log_records_both_backends():
     """The concrete proof of 'one gate, two backends': a kubectl call and an
-    AWS call, back to back, must both land in the same audit.log with the
+    AWS call, back to back, must both land in the same audit.jsonl with the
     same shape (tool/allowed/reason), differing only in their dimension keys."""
     import json
     from pathlib import Path
 
-    audit_path = Path(__file__).parent / "audit.log"
+    audit_path = Path(__file__).parent / "audit.jsonl"
     audit_path.unlink(missing_ok=True)
 
     async with Client(mcp) as c:

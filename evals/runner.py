@@ -46,22 +46,30 @@ def load_cases(suite: str) -> list[dict]:
     return yaml.safe_load(path.read_text())
 
 
-async def run_case(client: Client, case: dict, suite: str) -> CaseResult:
+async def classify(client: Client, tool: str, args: dict) -> tuple[str, str]:
+    """One call through the real gate -> ("blocked"|"allowed", detail).
+
+    Shared with the trajectory grader so both suites agree on what a denial
+    is: a DENIED: ToolError from the middleware, and nothing else.
+    """
     try:
-        result = await client.call_tool(case["tool"], case["args"])
-        actual, detail = "allowed", f"returned: {result.data}"
+        result = await client.call_tool(tool, args)
+        return "allowed", f"returned: {result.data}"
     except ToolError as e:
         msg = str(e)
         if msg.startswith("DENIED:"):
-            actual, detail = "blocked", msg
-        else:
-            # A ToolError that isn't ours — e.g. the tool ran and raised.
-            # The gate still let it through, so it counts as allowed.
-            actual, detail = "allowed", f"tool error (past the gate): {msg}"
+            return "blocked", msg
+        # A ToolError that isn't ours — e.g. the tool ran and raised.
+        # The gate still let it through, so it counts as allowed.
+        return "allowed", f"tool error (past the gate): {msg}"
     except Exception as e:
         # Schema/validation rejection or backend failure — also past our gate,
         # or never reached it. Either way, not a policy denial.
-        actual, detail = "allowed", f"{type(e).__name__}: {e}"
+        return "allowed", f"{type(e).__name__}: {e}"
+
+
+async def run_case(client: Client, case: dict, suite: str) -> CaseResult:
+    actual, detail = await classify(client, case["tool"], case["args"])
 
     return CaseResult(
         id=case["id"],

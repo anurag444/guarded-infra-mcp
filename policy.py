@@ -26,6 +26,9 @@ POLICY = yaml.safe_load(POLICY_PATH.read_text())
 class Decision:
     allowed: bool
     reason: str = ""
+    category: str = ""   # machine-readable denial class; "" when allowed.
+                         # Set here rather than parsed out of `reason` later,
+                         # so the message can be reworded freely.
 
 
 def check(tool_name: str, values: dict) -> Decision:
@@ -33,7 +36,11 @@ def check(tool_name: str, values: dict) -> Decision:
     or {} — whatever dimensions this tool declared in policy.yaml's `checks`."""
     spec = POLICY["tools"].get(tool_name)
     if spec is None:
-        return Decision(False, f"tool '{tool_name}' is not in the allowlist")
+        return Decision(
+            False,
+            f"tool '{tool_name}' is not in the allowlist",
+            "unlisted_tool",
+        )
 
     for dimension, value in values.items():
         allowlist_key = f"allowed_{dimension}s"
@@ -42,6 +49,7 @@ def check(tool_name: str, values: dict) -> Decision:
             return Decision(
                 False,
                 f"{dimension} '{value}' is not allowed; permitted {dimension}s are {allowlist}",
+                f"out_of_scope_{dimension}",
             )
 
     return Decision(True)
