@@ -3,4 +3,5 @@ __pycache__/
 .pytest_cache/
 *.pyc
 audit*.jsonl
+audit.log
 docs/demo.cast
