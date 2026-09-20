@@ -92,6 +92,11 @@ async def kubectl_logs(namespace: str, pod_name: str) -> dict:
                 name=pod_name,
                 namespace=namespace,
                 tail_lines=200,
+                # The preloaded path runs str() over the raw body, so logs
+                # arrive as the literal text b'...\n' — an encoding artefact
+                # the agent cannot distinguish from a log line saying that.
+                # Take the raw response and decode it ourselves instead.
+                _preload_content=False,
             ),
             timeout=REQUEST_TIMEOUT_SECONDS,
         )
@@ -102,7 +107,7 @@ async def kubectl_logs(namespace: str, pod_name: str) -> dict:
             return {"error": f"pod '{pod_name}' not found in namespace '{namespace}'"}
         return {"error": f"kubernetes API error (status {e.status})"}
 
-    return {"logs": result}
+    return {"logs": result.data.decode("utf-8", errors="replace")}
 
 
 @mcp.tool()

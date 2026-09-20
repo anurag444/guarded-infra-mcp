@@ -117,3 +117,21 @@ def test_pod_targeted_tools_share_the_same_error_shape():
     for result in (bad_logs, bad_describe):
         assert "error" in result
         assert isinstance(result["error"], str)
+
+@pytest.mark.asyncio
+async def test_logs_come_back_as_text_not_a_bytes_repr():
+    """The kubernetes client returns bytes on some API/server combinations.
+    Unconverted, the agent receives the literal string b'...' and cannot tell
+    an encoding artefact from a log line that genuinely says that.
+
+    Reads whatever pod is present rather than a fixture workload, so it pins
+    the type contract without depending on a particular deployment existing.
+    """
+    pods = await kubectl_get(namespace="dev", resource_type=ResourceType.PODS)
+    if not pods.get("pods"):
+        pytest.skip("no pods in dev to read logs from")
+
+    result = await kubectl_logs(namespace="dev", pod_name=pods["pods"][0]["name"])
+    logs = result.get("logs", result.get("error", ""))
+    assert isinstance(logs, str)
+    assert not logs.startswith("b'"), f"logs came back as a bytes repr: {logs[:40]}"

@@ -1,0 +1,5 @@
+{"ts": "2026-09-20T02:35:30.135642+00:00", "tool": "kubectl_get", "namespace": "dev", "resource": "pods", "allowed": true, "reason": ""}
+{"ts": "2026-09-20T02:35:32.191628+00:00", "tool": "kubectl_get", "namespace": "kube-system", "resource": "pods", "allowed": false, "reason": "namespace 'kube-system' is not allowed; permitted namespaces are ['dev', 'demo']"}
+{"ts": "2026-09-20T03:09:39.878040+00:00", "tool": "kubectl_get", "namespace": "dev", "resource": "pods", "allowed": true, "reason": ""}
+{"ts": "2026-09-20T03:09:42.841794+00:00", "tool": "kubectl_logs", "namespace": "dev", "resource": "pods", "allowed": true, "reason": ""}
+{"ts": "2026-09-20T03:10:52.812229+00:00", "tool": "kubectl_logs", "namespace": "dev", "resource": "pods", "allowed": true, "reason": ""}

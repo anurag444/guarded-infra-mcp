@@ -249,7 +249,9 @@ Working: five read-only tools across two backends, one policy gate, JSONL audit
 trail with jq queries, 51 tests (45 of them with no setup), CI on every push,
 and both eval suites at 100% / 0%.
 
-Regenerate the demo above with `docs/record.sh` (needs `asciinema` and `agg`).
+`docs/record.sh` regenerates both recordings (needs `asciinema` and `agg`): the
+README demo above, and `docs/agent-demo.mp4` — one agent triage session where
+the first two calls are answered and the next two are refused.
 
 Next: close the two recorded injection gaps by giving `pod_name` and
 `policy_arn` their own `checks` entries; drive trajectory evals from a live
